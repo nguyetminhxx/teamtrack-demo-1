@@ -1,0 +1,28 @@
+# Secrets & môi trường
+.env
+*.env.local
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Dữ liệu & log cục bộ
+*.log
+*.db
+*.sql.gz
+*.dump
+
+# Key/credential
+*.pem
+*.key
+*.crt
+ssh_key*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
