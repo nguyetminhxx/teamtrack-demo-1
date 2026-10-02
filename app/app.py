@@ -5,6 +5,38 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import db
 
 app = Flask(__name__)
+def init_db_on_startup():
+    try:
+        import seed
+        conn = db.get_conn()
+        cursor = conn.cursor()
+        schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+        if os.path.exists(schema_path):
+            with open(schema_path, 'r', encoding='utf-8') as f:
+                sql_content = f.read()
+            statements = []
+            for stmt in sql_content.split(';'):
+                stmt_clean = stmt.strip()
+                if stmt_clean and not any(stmt_clean.upper().startswith(k) for k in ['USE', 'CREATE DATABASE', 'CREATE USER', 'GRANT']):
+                    statements.append(stmt_clean)
+            for statement in statements:
+                try:
+                    cursor.execute(statement)
+                except Exception as e:
+                    print(f"Skip stmt error: {e}")
+            conn.commit()
+            print("Schema initialized successfully!")
+        try:
+            seed.main()
+            print("Seeded successfully!")
+        except Exception as e:
+            print("Seed error:", e)
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print("Init DB error:", e)
+
+init_db_on_startup()
 app.secret_key = os.environ.get("TT_SECRET_KEY", "dev-only-not-for-production")
 
 TEMPLATES = {
