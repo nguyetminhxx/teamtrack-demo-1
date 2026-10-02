@@ -52,27 +52,101 @@ webapp/
 └── BAO_CAO.md            # Báo cáo chi tiết nộp môn
 ```
 
-## 5. Cài đặt & chạy (máy local)
+## 5. Hướng dẫn chạy app trên localhost
+
+### 5.1. Yêu cầu môi trường
+
+Trước khi bắt đầu, máy bạn cần có:
+
+| Phần mềm | Phiên bản khuyến nghị | Cách kiểm tra đã cài |
+|---|---|---|
+| Python | 3.12 trở lên | `python3 --version` |
+| MySQL Server | 8.x | `mysql --version` |
+| pip | đi kèm Python | `pip3 --version` |
+
+- **Chưa cài Python?** Tải tại [python.org/downloads](https://www.python.org/downloads/) (Ubuntu thường có sẵn).
+- **Chưa cài MySQL?**
+  - Ubuntu/WSL: `sudo apt update && sudo apt install mysql-server`
+  - Windows/macOS: tải [MySQL Installer](https://dev.mysql.com/downloads/installer/)
+
+### 5.2. Tạo database
+
+Mở terminal, di chuyển vào thư mục dự án rồi chạy file `schema.sql` để tạo database `teamtrack` cùng 8 bảng:
 
 ```bash
-# 1. Cài MySQL & tạo database
-mysql -u root < app/schema.sql
+cd webapp            # vào thư mục dự án (nếu chưa ở trong)
+mysql -u root -p < app/schema.sql
+```
 
-# 2. Tạo môi trường ảo & cài dependency
+- Lệnh sẽ hỏi mật khẩu root của MySQL bạn đã đặt khi cài.
+- Nếu MySQL yêu cầu mật khẩu mạnh, hoặc bạn muốn dùng user riêng thay vì `root`, hãy chạy các lệnh SQL sau trong `mysql -u root -p` (thay `<mật-khẩu>` bằng mật khẩu bạn muốn — **phải trùng** với `TT_DB_PASSWORD` ở bước sau):
+
+```sql
+CREATE USER IF NOT EXISTS 'tt_user'@'localhost' IDENTIFIED BY '<mật-khẩu>';
+GRANT ALL PRIVILEGES ON teamtrack.* TO 'tt_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### 5.3. Cài Python dependency
+
+```bash
 cd app
-python3 -m venv .venv
+python3 -m venv .venv          # tạo môi trường ảo (chỉ cần làm 1 lần)
 .venv/bin/pip install -r requirements.txt
+```
 
-# 3. Cấu hình biến môi trường (copy từ mẫu rồi điền giá trị thật)
+> Trên Windows dùng Git Bash/PowerShell: `.venv\Scripts\pip install -r requirements.txt`
+
+### 5.4. Cấu hình biến môi trường
+
+Copy file mẫu `.env.example` thành `.env` rồi điền giá trị thật:
+
+```bash
 cp .env.example .env
-# password DB chứa trong .env — KHÔNG commit file này lên git
+```
 
-# 4. Nạp dữ liệu mẫu
+Mở `.env` và sửa 2 dòng quan trọng nhất:
+
+```env
+TT_DB_PASSWORD=<mật-khẩu-đã-đặt-ở-bước-5.2>
+TT_SECRET_KEY=<chuỗi ngẫu nhiên, tạo bằng: python3 -c "import secrets; print(secrets.token_hex(32))">
+```
+
+> ⚠️ File `.env` chứa mật khẩu — đã được đưa vào `.gitignore`, **không commit** lên git.
+
+### 5.5. Nạp dữ liệu mẫu
+
+Tạo 4 user demo, 3 dự án và ~30 task để có dữ liệu xem ngay:
+
+```bash
 .venv/bin/python seed.py
+```
 
-# 5. Chạy server
+### 5.6. Chạy server
+
+```bash
 .venv/bin/flask --app app run --port 5000
-# hoặc production:
+```
+
+Mở trình duyệt và truy cập: **http://127.0.0.1:5000** — đăng nhập bằng tài khoản demo ở [mục 6](#6-tài-khoản-demo) (ví dụ `maianh.k62@neu.edu.vn` / `123456`).
+
+> Nếu thấy `Running on http://127.0.0.1:5000` trong terminal là server đã chạy thành công. Nhấn `Ctrl+C` để dừng.
+
+### 5.7. Xử lý lỗi thường gặp
+
+| Lỗi | Nguyên nhân & cách sửa |
+|---|---|
+| `Access denied for user 'tt_user'@'localhost'` | Mật khẩu trong `.env` khác với mật khẩu MySQL. Sửa lại `TT_DB_PASSWORD` (bước 5.4) hoặc tạo lại user (bước 5.2). |
+| `Unknown database 'teamtrack'` | Chưa chạy `schema.sql` — quay lại bước 5.2. |
+| `Can't connect to MySQL server` | MySQL chưa chạy. Ubuntu: `sudo systemctl start mysql`. Windows: mở app **Services** và start MySQL80. |
+| `ModuleNotFoundError: No module named 'flask'` | Chưa kích hoạt môi trường ảo đúng cách — dùng `.venv/bin/flask` (Linux/macOS) hoặc `.venv\Scripts\flask` (Windows). |
+| Port 5000 đã được sử dụng | Chạy với port khác: thêm `--port 8000` vào lệnh flask. |
+
+### 5.8. Chạy ở chế độ production (tùy chọn)
+
+Khi cần mô phỏng môi trường server thật trên máy local:
+
+```bash
 .venv/bin/gunicorn -w 2 -b 127.0.0.1:5000 app:app
 ```
 
